@@ -134,6 +134,16 @@ module Pilot
       # This is where we could add a check to see if encryption is required and has been updated
       uploaded_build.export_compliance.encryption_updated = false
 
+      #if groups are specified, don't rely on the distribute_external flag
+      if options[:groups]
+        groups = Spaceship::TestFlight::Group.filter_groups(app_id: uploaded_build.app_id) do |group|
+          options[:groups].include?(group.name)
+        end
+        groups.each do |group|
+          uploaded_build.add_group!(group)
+        end
+      end
+
       if options[:distribute_external]
         uploaded_build.beta_review_info.demo_account_required = false
         uploaded_build.submit_for_testflight_review!
@@ -144,14 +154,6 @@ module Pilot
           UI.user_error!("You must specify at least one group using the `:groups` option to distribute externally")
         end
 
-        if options[:groups]
-          groups = Spaceship::TestFlight::Group.filter_groups(app_id: uploaded_build.app_id) do |group|
-            options[:groups].include?(group.name)
-          end
-          groups.each do |group|
-            uploaded_build.add_group!(group)
-          end
-        end
       else # distribute internally
         # in case any changes to export_compliance are required
         if uploaded_build.export_compliance_missing?
